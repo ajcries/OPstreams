@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Piece  Stream</title>
+    <link rel="icon" type="image/png" href="/images/straw-hat-pirates-logo-png_seeklogo-497450.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @font-face {
+            font-family: 'One Piece';
+            src: url('https://fonts.cdnfonts.com/css/one-piece') format('woff2');
+        }
+        
+        body {
+            background-image: url('https://imgsrv.crunchyroll.com/cdn-cgi/image/fit=cover,format=auto,quality=85,width=1920/keyart/GRMG8ZQZR-backdrop_wide');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            overflow: hidden;
+            font-family: 'One Piece', sans-serif;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #opening-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s;
+        }
+        
+        #skip-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 101;
+        }
+        
+        #skip-button {
+            padding: 10px 20px;
+            background-color: rgba(255, 204, 0, 0.7);
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'One Piece', sans-serif;
+            font-size: 1.2rem;
+        }
+        
+        #skip-logo {
+            width: 50px;
+            height: 50px;
+            filter: drop-shadow(0 0 5px rgba(255, 204, 0, 0.7));
+        }
+        
+        #opening-container:hover #skip-container {
+            opacity: 1;
+        }
+        
+        /* Video Thumbnail Container */
+        #video-thumbnail-container {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 180px;
+            cursor: pointer;
+            z-index: 98;
+            transition: all 0.3s ease;
+        }
+        
+        #video-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: 3px solid #ffcc00;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        #play-button-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 204, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #play-button-overlay::after {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-left: 25px solid #000;
+            margin-left: 5px;
+        }
+        
+        #video-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 99;
+        }
+        
+        #main-video {
+            max-width: 90%;
+            max-height: 90%;
+            box-shadow: 0 0 30px rgba(255, 204, 0, 0.5);
+            border: 3px solid #ffcc00;
+            border-radius: 10px;
+        }
+        
+        .straw-hat {
+            position: absolute;
+            width: 100px;
+            opacity: 0.2;
+            animation: float 15s infinite linear;
+            filter: drop-shadow(0 0 5px rgba(255, 204, 0, 0.7));
+        }
+        
+        /* Live TV Button Styles */
+        #live-tv-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 98;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #live-tv-button {
+            background: linear-gradient(135deg, #ff0000, #ff6600);
+            border: 2px solid #ffcc00;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        #live-tv-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        }
+        
+        #live-tv-button img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        #countdown-timer {
+            color: white;
+            font-size: 1.5rem;
+            text-shadow: 0 0 5px #ff0000;
+            display: none;
+        }
+        
+        #live-tv-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        #live-tv-player {
+            width: 80%;
+            height: 80%;
+            border: 3px solid #ffcc00;
+            border-radius: 10px;
+        }
+        
+        #close-live-tv {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'One Piece', sans-serif;
+            font-size: 1.2rem;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+            }
+        }
+        
+        /* Video player customizations */
+        video::-webkit-media-controls {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+        
+        video::-webkit-media-controls-play-button {
+            background-color: #ffcc00;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Opening Sequence -->
+    <div id="opening-container">
+        <video id="opening-video" width="100%" height="100%" autoplay muted>
+            <source src="/videos/OP.mp4" type="video/mp4">
+        </video>
+        
+        <div id="skip-container">
+            <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" id="skip-logo">
+            <button id="skip-button">SKIP</button>
+        </div>
+        
+        <!-- Decorative straw hats -->
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 10%; left: 5%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 20%; left: 15%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 30%; left: 25%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 40%; left: 35%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 50%; left: 45%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 60%; left: 55%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 70%; left: 65%;">
+        <img src="/images/straw-hat-pirates-logo-png_seeklogo-497450.png" class="straw-hat" style="top: 80%; left: 75%;">
+    </div>
+    
+    <!-- Video Thumbnail Preview -->
+    <div id="video-thumbnail-container">
+        <img id="video-thumbnail" src="data:image/jpeg;base64,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" alt="One Piece Thumbnail">
+        <div id="play-button-overlay"></div>
+    </div>
+    
+    <!-- Main Video Player -->
+    <div id="video-container">
+        <video id="main-video" controls>
+            <source src="https://prx-9-r-out.vmwesa.online/hls2/01/01813/3ii1snm96t6z_,l,n,.urlset/master.m3u8?t=Sr0YjxC8SNFuXCkmcGfQaAgbRIHKJhYIP9v-RuZX3uM&s=1744720213&e=43200&v=&srv=bck-1241-i&i=0.4&sp=0&asn=37294" type="application/x-mpegURL">
+        </video>
+    </div>
+    
+    <!-- Live TV Button -->
+    <div id="live-tv-container">
+        <div id="countdown-timer"></div>
+        <div id="live-tv-button" title="Watch Fuji TV Live (One Piece airs Sundays at 11:15 PM JST)">
+            <img src="images/Fuji_tv_logo.png" alt="Fuji TV + One Piece Logo">
+        </div>
+    </div>
+    
+    <!-- Live TV Modal -->
+    <div id="live-tv-modal">
+        <video id="live-tv-player" controls>
+            <source src="http://vthanh.utako.moe/Fuji_TV/index.m3u8" type="application/x-mpegURL">
+        </video>
+        <button id="close-live-tv">Close Live TV</button>
+    </div>
+    
+    <!-- Fuji TV Schedule Countdown (Top Right Corner) -->
+    <div class="fixed top-4 right-4 bg-black/70 border-2 border-yellow-400 rounded-lg p-4 z-50 text-white max-w-xs">
+        <h3 class="text-xl font-bold mb-2 text-yellow-400 text-center border-b border-yellow-400 pb-1">Fuji TV Schedule</h3>
+        <div id="next-episode" class="font-bold text-center my-2">Next Episode: Sunday 11:15 PM (JST)</div>
+        <div id="countdown-display" class="text-2xl text-red-500 text-center my-3 font-mono text-shadow shadow-red-500"></div>
+        
+        <div class="space-y-2 mt-4">
+            <div class="flex justify-between text-sm font-semibold text-yellow-300">
+                <span>Sunday</span>
+                <span>11:15 PM (JST)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const openingContainer = document.getElementById('opening-container');
+            const openingVideo = document.getElementById('opening-video');
+            const skipButton = document.getElementById('skip-button');
+            const videoThumbnailContainer = document.getElementById('video-thumbnail-container');
+            const videoContainer = document.getElementById('video-container');
+            const mainVideo = document.getElementById('main-video');
+            const liveTvButton = document.getElementById('live-tv-button');
+            const liveTvModal = document.getElementById('live-tv-modal');
+            const liveTvPlayer = document.getElementById('live-tv-player');
+            const closeLiveTv = document.getElementById('close-live-tv');
+            const countdownTimer = document.getElementById('countdown-timer');
+            
+            // Initially hide the thumbnail until opening sequence is done
+            videoThumbnailContainer.style.display = 'none';
+            
+            // Check if HLS is supported
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(mainVideo.querySelector('source').src);
+                hls.attachMedia(mainVideo);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    // Video is ready to play
+                });
+                
+                // Also for live TV player
+                const liveHls = new Hls();
+                liveHls.loadSource(liveTvPlayer.querySelector('source').src);
+                liveHls.attachMedia(liveTvPlayer);
+            } else if (mainVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support
+                mainVideo.src = mainVideo.querySelector('source').src;
+                liveTvPlayer.src = liveTvPlayer.querySelector('source').src;
+            } else {
+                alert('Your browser does not support HLS streaming');
+            }
+            
+            // Skip button functionality
+            skipButton.addEventListener('click', function() {
+                openingVideo.pause();
+                openingContainer.style.opacity = '0';
+                setTimeout(() => {
+                    openingContainer.style.display = 'none';
+                    videoThumbnailContainer.style.display = 'block';
+                }, 500);
+            });
+            
+            // Auto-skip when opening finishes
+            openingVideo.addEventListener('ended', function() {
+                openingContainer.style.opacity = '0';
+                setTimeout(() => {
+                    openingContainer.style.display = 'none';
+                    videoThumbnailContainer.style.display = 'block';
+                }, 500);
+            });
+            
+            // Mute/unmute toggle for opening
+            openingVideo.addEventListener('click', function() {
+                openingVideo.muted = !openingVideo.muted;
+            });
+            
+            // Click on thumbnail to show video
+            videoThumbnailContainer.addEventListener('click', function() {
+                videoThumbnailContainer.style.display = 'none';
+                videoContainer.style.display = 'flex';
+                mainVideo.play();
+            });
+            
+            // Click to close full video
+            mainVideo.addEventListener('click', function(e) {
+                // Don't trigger if clicking on controls
+                if (e.target.classList.contains('straw-hat') || e.target === skipButton) return;
+                
+                if (!e.target.classList.contains('straw-hat')) {
+                    if (mainVideo.paused) {
+                        mainVideo.play();
+                    } else {
+                        mainVideo.pause();
+                    }
+                }
+            });
+            
+            // Close video and return to thumbnail when paused
+            mainVideo.addEventListener('pause', function() {
+                // Only return to thumbnail if not from controls
+                if (!mainVideo.ended) {
+                    setTimeout(() => {
+                        if (mainVideo.paused) {
+                            videoContainer.style.display = 'none';
+                            videoThumbnailContainer.style.display = 'block';
+                        }
+                    }, 1000);
+                }
+            });
+            
+            // Live TV functionality
+            function checkOnePieceAirTime() {
+                // One Piece airs on Sundays at 11:15 PM JST
+                const jstAirTime = {
+                    day: 0, // Sunday (0 is Sunday in JavaScript)
+                    hour: 23, // 11 PM
+                    minute: 15 // 15 minutes
+                };
+                
+                // Convert JST to local time
+                const now = new Date();
+                const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
+                const localOffset = now.getTimezoneOffset() * 60 * 1000;
+                const localTime = new Date(now.getTime() + localOffset + jstOffset);
+                
+                // Check if today is Sunday
+                if (localTime.getDay() === jstAirTime.day) {
+                    const currentHour = localTime.getHours();
+                    const currentMinute = localTime.getMinutes();
+                    const totalCurrentMinutes = currentHour * 60 + currentMinute;
+                    const totalAirTimeMinutes = jstAirTime.hour * 60 + jstAirTime.minute;
+                    
+                    // Check if we're within 2 hours of air time
+                    if (totalCurrentMinutes >= totalAirTimeMinutes - 120 && 
+                        totalCurrentMinutes < totalAirTimeMinutes + 60) {
+                        
+                        // Calculate time until air time
+                        const timeUntilAir = totalAirTimeMinutes - totalCurrentMinutes;
+                        
+                        if (timeUntilAir <= 2 && timeUntilAir > 0) {
+                            // Show countdown (last 2 minutes)
+                            countdownTimer.style.display = 'block';
+                            liveTvButton.style.display = 'none';
+                            
+                            let secondsLeft = timeUntilAir * 60;
+                            const countdownInterval = setInterval(() => {
+                                secondsLeft--;
+                                if (secondsLeft <= 0) {
+                                    clearInterval(countdownInterval);
+                                    countdownTimer.style.display = 'none';
+                                    liveTvModal.style.display = 'flex';
+                                    liveTvPlayer.play();
+                                } else {
+                                    const mins = Math.floor(secondsLeft / 60);
+                                    const secs = secondsLeft % 60;
+                                    countdownTimer.textContent = `Live in ${mins}:${secs < 10 ? '0' + secs : secs}`;
+                                }
+                            }, 1000);
+                        } else if (timeUntilAir <= 0) {
+                            // Episode is airing now or within the past hour
+                            liveTvButton.style.display = 'flex';
+                            liveTvButton.onclick = function() {
+                                liveTvModal.style.display = 'flex';
+                                liveTvPlayer.play();
+                            };
+                        } else {
+                            // More than 2 minutes until air time
+                            liveTvButton.style.display = 'flex';
+                            liveTvButton.onclick = function() {
+                                alert("One Piece airs in " + timeUntilAir + " minutes on Fuji TV. Come back then!");
+                            };
+                        }
+                    } else {
+                        // Not within the 2-hour window
+                        liveTvButton.style.display = 'flex';
+                        liveTvButton.onclick = function() {
+                            alert("One Piece airs on Sundays at 11:15 PM JST. Come back then!");
+                        };
+                    }
+                } else {
+                    // Not Sunday
+                    liveTvButton.style.display = 'flex';
+                    liveTvButton.onclick = function() {
+                        alert("One Piece airs on Sundays at 11:15 PM JST. Come back then!");
+                    };
+                }
+            }
+            
+            // Check air time on load and every minute
+            checkOnePieceAirTime();
+            setInterval(checkOnePieceAirTime, 60000);
+            
+            // Close live TV modal
+            closeLiveTv.addEventListener('click', function() {
+                liveTvModal.style.display = 'none';
+                liveTvPlayer.pause();
+            });
+        });
+
+
+        // Fuji TV Countdown Timer
+    function updateCountdown() {
+        // One Piece airs on Sundays at 11:15 PM JST
+        const jstAirTime = {
+            day: 0, // Sunday (0 is Sunday in JavaScript)
+            hour: 23, // 11 PM
+            minute: 15 // 15 minutes
+        };
+        
+        // Get current time in JST (UTC+9)
+        const now = new Date();
+        const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
+        const localOffset = now.getTimezoneOffset() * 60 * 1000;
+        const jstTime = new Date(now.getTime() + localOffset + jstOffset);
+        
+        // Find next air time
+        let nextAirTime = new Date(jstTime);
+        nextAirTime.setHours(jstAirTime.hour, jstAirTime.minute, 0, 0);
+        
+        // If today is Sunday but already past air time, set for next Sunday
+        if (jstTime.getDay() === jstAirTime.day && jstTime > nextAirTime) {
+            nextAirTime.setDate(nextAirTime.getDate() + 7);
+        } 
+        // If today isn't Sunday, find next Sunday
+        else if (jstTime.getDay() !== jstAirTime.day) {
+            const daysUntilSunday = (jstAirTime.day + 7 - jstTime.getDay()) % 7;
+            nextAirTime.setDate(jstTime.getDate() + daysUntilSunday);
+        }
+        
+        // Calculate time difference
+        const diff = nextAirTime - jstTime;
+        
+        // If episode is airing now or within the next 2 hours
+        if (diff > 0 && diff <= 2 * 60 * 60 * 1000) {
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            document.getElementById('countdown-display').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+            document.getElementById('countdown-display').textContent = 
+                "Not airing soon";
+        }
+    }
+
+    // Update countdown immediately and then every second
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+    
+    </script>
+    
+    <!-- HLS.js library for streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</body>
+</html>
