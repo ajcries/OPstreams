@@ -313,7 +313,7 @@
         </div>
     </div>
 
-    <script>
+        <script>
         document.addEventListener('DOMContentLoaded', function() {
             const openingContainer = document.getElementById('opening-container');
             const openingVideo = document.getElementById('opening-video');
@@ -330,23 +330,97 @@
             // Initially hide the thumbnail until opening sequence is done
             videoThumbnailContainer.style.display = 'none';
             
-            // Check if HLS is supported
+            // Function to test if a URL is accessible
+            async function testUrl(url) {
+                try {
+                    const response = await fetch(url, { method: 'HEAD', mode: 'cors' });
+                    return response.ok;
+                } catch {
+                    return false;
+                }
+            }
+            
+            // Function to fetch and parse the M3U playlist for an HTTPS Fuji TV URL
+            async function fetchFujiTvUrl() {
+                const playlistUrl = 'https://raw.githubusercontent.com/luongz/iptv-jp/refs/heads/main/jp.m3u';
+                const preferredUrl = 'https://vthanh.utako.moe/Fuji_TV/index.m3u8'; // Try HTTPS version of provided URL
+                const fallbackHttpUrl = 'http://vthanh.utako.moe/Fuji_TV/index.m3u8'; // Fallback HTTP URL
+                
+                // First, test the preferred HTTPS URL
+                if (await testUrl(preferredUrl)) {
+                    console.log('Using preferred HTTPS Fuji TV URL:', preferredUrl);
+                    return preferredUrl;
+                }
+                
+                console.warn('Preferred HTTPS URL not accessible, searching playlist...');
+                
+                // Fetch the playlist to find an HTTPS Fuji TV URL
+                try {
+                    const response = await fetch(playlistUrl);
+                    if (!response.ok) throw new Error('Failed to fetch playlist');
+                    const text = await response.text();
+                    
+                    const lines = text.split('\n');
+                    let fujiTvUrl = null;
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].includes('#EXTINF') && 
+                            (lines[i].toLowerCase().includes('fuji tv') || lines[i].includes('フジテレビ'))) {
+                            if (i + 1 < lines.length && lines[i + 1].startsWith('https://')) {
+                                fujiTvUrl = lines[i + 1].trim();
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (fujiTvUrl) {
+                        console.log('Found HTTPS Fuji TV URL in playlist:', fujiTvUrl);
+                        return fujiTvUrl;
+                    }
+                    
+                    // If no HTTPS URL found, warn about HTTP fallback
+                    console.warn('No HTTPS Fuji TV URL found in playlist. Falling back to HTTP, which may cause mixed content issues.');
+                    alert('No HTTPS stream found for Fuji TV. Using HTTP stream, which may not work due to mixed content restrictions.');
+                    return fallbackHttpUrl;
+                } catch (error) {
+                    console.error('Error fetching Fuji TV URL:', error);
+                    alert('Error loading Fuji TV stream. Using fallback HTTP stream, which may not work.');
+                    return fallbackHttpUrl;
+                }
+            }
+            
+            // Initialize HLS.js for main video and live TV
             if (Hls.isSupported()) {
                 const hls = new Hls();
                 hls.loadSource(mainVideo.querySelector('source').src);
                 hls.attachMedia(mainVideo);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    // Video is ready to play
+                    // Main video ready
                 });
                 
-                // Also for live TV player
+                // Initialize live TV player with dynamic Fuji TV URL
                 const liveHls = new Hls();
-                liveHls.loadSource(liveTvPlayer.querySelector('source').src);
-                liveHls.attachMedia(liveTvPlayer);
+                fetchFujiTvUrl().then(url => {
+                    liveHls.loadSource(url);
+                    liveHls.attachMedia(liveTvPlayer);
+                    // Set source dynamically
+                    const source = document.createElement('source');
+                    source.src = url;
+                    source.type = 'application/x-mpegURL';
+                    liveTvPlayer.appendChild(source);
+                });
             } else if (mainVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                // Native HLS support
+                // Native HLS support for main video
                 mainVideo.src = mainVideo.querySelector('source').src;
-                liveTvPlayer.src = liveTvPlayer.querySelector('source').src;
+                
+                // Native HLS for live TV
+                fetchFujiTvUrl().then(url => {
+                    liveTvPlayer.src = url;
+                    const source = document.createElement('source');
+                    source.src = url;
+                    source.type = 'application/x-mpegURL';
+                    liveTvPlayer.appendChild(source);
+                });
             } else {
                 alert('Your browser does not support HLS streaming');
             }
@@ -384,7 +458,6 @@
             
             // Click to close full video
             mainVideo.addEventListener('click', function(e) {
-                // Don't trigger if clicking on controls
                 if (e.target.classList.contains('straw-hat') || e.target === skipButton) return;
                 
                 if (!e.target.classList.contains('straw-hat')) {
@@ -398,7 +471,6 @@
             
             // Close video and return to thumbnail when paused
             mainVideo.addEventListener('pause', function() {
-                // Only return to thumbnail if not from controls
                 if (!mainVideo.ended) {
                     setTimeout(() => {
                         if (mainVideo.paused) {
@@ -411,35 +483,28 @@
             
             // Live TV functionality
             function checkOnePieceAirTime() {
-                // One Piece airs on Sundays at 11:15 PM JST
                 const jstAirTime = {
-                    day: 0, // Sunday (0 is Sunday in JavaScript)
+                    day: 0, // Sunday
                     hour: 23, // 11 PM
                     minute: 15 // 15 minutes
                 };
                 
-                // Convert JST to local time
                 const now = new Date();
-                const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
+                const jstOffset = 9 * 60 * 60 * 1000;
                 const localOffset = now.getTimezoneOffset() * 60 * 1000;
                 const localTime = new Date(now.getTime() + localOffset + jstOffset);
                 
-                // Check if today is Sunday
                 if (localTime.getDay() === jstAirTime.day) {
                     const currentHour = localTime.getHours();
                     const currentMinute = localTime.getMinutes();
                     const totalCurrentMinutes = currentHour * 60 + currentMinute;
                     const totalAirTimeMinutes = jstAirTime.hour * 60 + jstAirTime.minute;
                     
-                    // Check if we're within 2 hours of air time
                     if (totalCurrentMinutes >= totalAirTimeMinutes - 120 && 
                         totalCurrentMinutes < totalAirTimeMinutes + 60) {
-                        
-                        // Calculate time until air time
                         const timeUntilAir = totalAirTimeMinutes - totalCurrentMinutes;
                         
                         if (timeUntilAir <= 2 && timeUntilAir > 0) {
-                            // Show countdown (last 2 minutes)
                             countdownTimer.style.display = 'block';
                             liveTvButton.style.display = 'none';
                             
@@ -458,28 +523,24 @@
                                 }
                             }, 1000);
                         } else if (timeUntilAir <= 0) {
-                            // Episode is airing now or within the past hour
                             liveTvButton.style.display = 'flex';
                             liveTvButton.onclick = function() {
                                 liveTvModal.style.display = 'flex';
                                 liveTvPlayer.play();
                             };
                         } else {
-                            // More than 2 minutes until air time
                             liveTvButton.style.display = 'flex';
                             liveTvButton.onclick = function() {
                                 alert("One Piece airs in " + timeUntilAir + " minutes on Fuji TV. Come back then!");
                             };
                         }
                     } else {
-                        // Not within the 2-hour window
                         liveTvButton.style.display = 'flex';
                         liveTvButton.onclick = function() {
                             alert("One Piece airs on Sundays at 11:15 PM JST. Come back then!");
                         };
                     }
                 } else {
-                    // Not Sunday
                     liveTvButton.style.display = 'flex';
                     liveTvButton.onclick = function() {
                         alert("One Piece airs on Sundays at 11:15 PM JST. Come back then!");
@@ -487,68 +548,55 @@
                 }
             }
             
-            // Check air time on load and every minute
             checkOnePieceAirTime();
             setInterval(checkOnePieceAirTime, 60000);
             
-            // Close live TV modal
             closeLiveTv.addEventListener('click', function() {
                 liveTvModal.style.display = 'none';
                 liveTvPlayer.pause();
             });
         });
 
-
         // Fuji TV Countdown Timer
-    function updateCountdown() {
-        // One Piece airs on Sundays at 11:15 PM JST
-        const jstAirTime = {
-            day: 0, // Sunday (0 is Sunday in JavaScript)
-            hour: 23, // 11 PM
-            minute: 15 // 15 minutes
-        };
-        
-        // Get current time in JST (UTC+9)
-        const now = new Date();
-        const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
-        const localOffset = now.getTimezoneOffset() * 60 * 1000;
-        const jstTime = new Date(now.getTime() + localOffset + jstOffset);
-        
-        // Find next air time
-        let nextAirTime = new Date(jstTime);
-        nextAirTime.setHours(jstAirTime.hour, jstAirTime.minute, 0, 0);
-        
-        // If today is Sunday but already past air time, set for next Sunday
-        if (jstTime.getDay() === jstAirTime.day && jstTime > nextAirTime) {
-            nextAirTime.setDate(nextAirTime.getDate() + 7);
-        } 
-        // If today isn't Sunday, find next Sunday
-        else if (jstTime.getDay() !== jstAirTime.day) {
-            const daysUntilSunday = (jstAirTime.day + 7 - jstTime.getDay()) % 7;
-            nextAirTime.setDate(jstTime.getDate() + daysUntilSunday);
-        }
-        
-        // Calculate time difference
-        const diff = nextAirTime - jstTime;
-        
-        // If episode is airing now or within the next 2 hours
-        if (diff > 0 && diff <= 2 * 60 * 60 * 1000) {
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        function updateCountdown() {
+            const jstAirTime = {
+                day: 0,
+                hour: 23,
+                minute: 15
+            };
             
-            document.getElementById('countdown-display').textContent = 
-                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        } else {
-            document.getElementById('countdown-display').textContent = 
-                "Not airing soon";
+            const now = new Date();
+            const jstOffset = 9 * 60 * 60 * 1000;
+            const localOffset = now.getTimezoneOffset() * 60 * 1000;
+            const jstTime = new Date(now.getTime() + localOffset + jstOffset);
+            
+            let nextAirTime = new Date(jstTime);
+            nextAirTime.setHours(jstAirTime.hour, jstAirTime.minute, 0, 0);
+            
+            if (jstTime.getDay() === jstAirTime.day && jstTime > nextAirTime) {
+                nextAirTime.setDate(nextAirTime.getDate() + 7);
+            } else if (jstTime.getDay() !== jstAirTime.day) {
+                const daysUntilSunday = (jstAirTime.day + 7 - jstTime.getDay()) % 7;
+                nextAirTime.setDate(jstTime.getDate() + daysUntilSunday);
+            }
+            
+            const diff = nextAirTime - jstTime;
+            
+            if (diff > 0 && diff <= 2 * 60 * 60 * 1000) {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('countdown-display').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                document.getElementById('countdown-display').textContent = 
+                    "Not airing soon";
+            }
         }
-    }
 
-    // Update countdown immediately and then every second
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
-    
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
     </script>
     
     <!-- HLS.js library for streaming -->
